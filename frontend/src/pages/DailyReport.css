@@ -1,0 +1,189 @@
+.daily-report-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.report-header {
+  margin-bottom: 24px;
+}
+
+.report-header h2 {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.report-header p {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.report-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.report-preview-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+}
+
+.date-picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 24px;
+  max-width: 250px;
+}
+
+.date-picker-section label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.date-input-field {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.date-input-field:focus {
+  border-color: #0284c7;
+}
+
+.report-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.revenue-text {
+  color: #0284c7 !important;
+}
+
+.breakdown-section {
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+.breakdown-section h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 12px;
+}
+
+.breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.breakdown-table th,
+.breakdown-table td {
+  padding: 12px 14px;
+  font-size: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.breakdown-table th {
+  background-color: #f8fafc;
+  font-weight: 700;
+  color: #475569;
+}
+
+.breakdown-table td {
+  color: #0f172a;
+}
+
+.fw-bold {
+  font-weight: 700;
+}
+
+.text-primary-color {
+  color: #0284c7;
+  font-weight: 700;
+}
+
+.no-data-text {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.report-loading {
+  text-align: center;
+  padding: 40px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.btn-download-pdf {
+  width: 100%;
+  padding: 12px;
+  background-color: #002b4d;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 10px;
+}
+
+.btn-download-pdf:hover {
+  background-color: #004073;
+}
+
+/* تنسيق الطباعة لتصدير PDF نظيف وخالي من أزرار التنقل */
+@media print {
+  body {
+    background: white;
+  }
+  .sidebar, .btn-download-pdf, .date-picker-section {
+    display: none !important;
+  }
+  .report-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+}

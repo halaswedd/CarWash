@@ -6,6 +6,8 @@ import Categories from './pages/Categories';
 import AdditionalServices from './pages/AdditionalServices';
 import NewOrder from './pages/NewOrder';
 import Orders from './pages/Orders';
+import Report from './pages/DailyReport'; 
+import Expenses from './pages/Expenses'; 
 
 function App() {
   const { admin, loading } = useAuth();
@@ -31,6 +33,10 @@ function App() {
         return <NewOrder />;
       case 'orders':
         return <Orders />;
+      case 'daily-report':
+        return <Report />; 
+      case 'expenses':
+        return <Expenses />;
       default:
         return (
           <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '12px' }}>
