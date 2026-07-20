@@ -1,9 +1,8 @@
 <?php
-// Dynamic CORS Origin Handling
 $origin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
 header("Access-Control-Allow-Origin: $origin");
 header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Content-Type: application/json');
 
@@ -21,58 +20,61 @@ if (!isset($_SESSION['admin_id'])) {
     exit();
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $data = json_decode(file_get_contents('php://input'), true);
 
-try {
-    switch ($method) {
-        case 'GET':
-            // Fetch orders along with category details
-            $stmt = $pdo->query('
-                SELECT o.*, c.name as category_name 
-                FROM orders o
-                LEFT JOIN categories c ON o.category_id = c.id
-                ORDER BY o.id DESC
-            ');
-            $orders = $stmt->fetchAll();
-            echo json_encode(['success' => true, 'data' => $orders]);
-            break;
+        $items = is_array($data['items']) ? $data['items'] : []; // الفئات بالسلّة
+        $services = is_array($data['additional_services']) ? $data['additional_services'] : []; // الخدمات الإضافية بالسلّة
+        $total = floatval($data['total_amount'] ?? 0);
 
-        case 'POST':
-            $data = json_decode(file_get_contents('php://input'), true);
+        if (empty($items) && empty($services)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Cart is empty.']);
+            exit();
+        }
 
-            $category_id = intval($data['category_id'] ?? 0);
-            $total = floatval($data['total_amount'] ?? $data['total'] ?? 0);
-            $services = is_array($data['additional_services']) ? $data['additional_services'] : [];
+        $pdo->beginTransaction();
 
-            if (!$category_id || $total <= 0) {
-                http_response_code(400);
-                echo json_encode(['success' => false, 'message' => 'Please select a category and total amount.']);
-                exit();
+        // 1. Insert main order
+        $stmtOrder = $pdo->prepare('INSERT INTO orders (total) VALUES (:total)');
+        $stmtOrder->execute(['total' => $total]);
+        $order_id = $pdo->lastInsertId();
+
+        // 2. Insert cart items into order_items
+        $stmtItem = $pdo->prepare('
+            INSERT INTO order_items (order_id, category_id, quantity, price) 
+            VALUES (:order_id, :category_id, :quantity, :price)
+        ');
+
+        foreach ($items as $item) {
+            $cat_id = intval($item['id'] ?? 0);
+            $qty = intval($item['quantity'] ?? 1);
+            $price = floatval($item['price'] ?? 0);
+
+            if ($cat_id > 0 && $qty > 0) {
+                $stmtItem->execute([
+                    'order_id' => $order_id,
+                    'category_id' => $cat_id,
+                    'quantity' => $qty,
+                    'price' => $price
+                ]);
             }
+        }
 
-            // Transaction to ensure atomic insert across both tables
-            $pdo->beginTransaction();
+        // 3. Insert additional services (supporting quantities)
+        if (!empty($services)) {
+            $stmtService = $pdo->prepare('
+                INSERT INTO order_additional_services (order_id, additional_service_id, price) 
+                VALUES (:order_id, :additional_service_id, :price)
+            ');
 
-            // 1. Insert into orders table
-            $stmtOrder = $pdo->prepare('INSERT INTO orders (category_id, total) VALUES (:category_id, :total)');
-            $stmtOrder->execute([
-                'category_id' => $category_id,
-                'total' => $total
-            ]);
+            foreach ($services as $serv) {
+                $service_id = intval($serv['id'] ?? 0);
+                $service_price = floatval($serv['price'] ?? 0);
+                $qty = intval($serv['quantity'] ?? 1);
 
-            $order_id = $pdo->lastInsertId();
-
-            // 2. Insert into order_additional_services table
-            if (!empty($services)) {
-                $stmtService = $pdo->prepare('
-                    INSERT INTO order_additional_services (order_id, additional_service_id, price) 
-                    VALUES (:order_id, :additional_service_id, :price)
-                ');
-
-                foreach ($services as $serv) {
-                    $service_id = intval($serv['id'] ?? 0);
-                    $service_price = floatval($serv['price'] ?? 0);
-
+                for ($i = 0; $i < $qty; $i++) {
                     if ($service_id > 0) {
                         $stmtService->execute([
                             'order_id' => $order_id,
@@ -82,25 +84,23 @@ try {
                     }
                 }
             }
+        }
 
-            $pdo->commit();
+        $pdo->commit();
 
-            echo json_encode([
-                'success' => true, 
-                'message' => 'Order created successfully!', 
-                'order_id' => $order_id
-            ]);
-            break;
-
-        default:
-            http_response_code(405);
-            echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
-            break;
+        echo json_encode([
+            'success' => true, 
+            'message' => 'Order submitted successfully!', 
+            'order_id' => $order_id
+        ]);
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
     }
-} catch (PDOException $e) {
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+} else {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
 }

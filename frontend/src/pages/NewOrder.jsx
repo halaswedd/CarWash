@@ -10,14 +10,9 @@ export default function NewOrder() {
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
 
-  // Form State
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [meters, setMeters] = useState(1);
-  const [selectedServices, setSelectedServices] = useState([]);
-  const [plateNumber, setPlateNumber] = useState('');
-
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // السلال (carts) للفئات والخدمات الإضافية مع الكميات
+  const [cart, setCart] = useState([]);
+  const [servicesCart, setServicesCart] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -46,33 +41,86 @@ export default function NewOrder() {
     }
   };
 
-  const toggleService = (service) => {
-    if (selectedServices.some((s) => s.id === service.id)) {
-      setSelectedServices(selectedServices.filter((s) => s.id !== service.id));
-    } else {
-      setSelectedServices([...selectedServices, service]);
-    }
+  // إدارة سلة الفئات (Categories Cart)
+  const addToCart = (category) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.id === category.id);
+      if (existingItem) {
+        return prevCart.map((item) =>
+          item.id === category.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      } else {
+        return [...prevCart, { ...category, quantity: 1 }];
+      }
+    });
   };
 
-  // Live Total Calculation
-  const calculateCategoryCost = () => {
-    if (!selectedCategory) return 0;
-    if (selectedCategory.price_type === 'per_meter') {
-      return (parseFloat(selectedCategory.price) || 0) * (parseFloat(meters) || 1);
-    }
-    return parseFloat(selectedCategory.price) || 0;
+  const updateQuantity = (id, delta) => {
+    setCart((prevCart) => {
+      return prevCart
+        .map((item) => {
+          if (item.id === id) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean);
+    });
+  };
+
+  const removeFromCart = (id) => {
+    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  };
+
+  // إدارة سلة الخدمات الإضافية (Services Cart)
+  const addServiceToCart = (service) => {
+    setServicesCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.id === service.id);
+      if (existingItem) {
+        return prevCart.map((item) =>
+          item.id === service.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      } else {
+        return [...prevCart, { ...service, quantity: 1 }];
+      }
+    });
+  };
+
+  const updateServiceQuantity = (id, delta) => {
+    setServicesCart((prevCart) => {
+      return prevCart
+        .map((item) => {
+          if (item.id === id) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean);
+    });
+  };
+
+  const removeServiceFromCart = (id) => {
+    setServicesCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  };
+
+  // الحسابات
+  const calculateItemsCost = () => {
+    return cart.reduce((sum, item) => sum + (parseFloat(item.price) || 0) * item.quantity, 0);
   };
 
   const calculateServicesCost = () => {
-    return selectedServices.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+    return servicesCart.reduce((sum, item) => sum + (parseFloat(item.price) || 0) * item.quantity, 0);
   };
 
-  const totalAmount = calculateCategoryCost() + calculateServicesCost();
+  const totalAmount = calculateItemsCost() + calculateServicesCost();
 
+  // إرسال الطلب النهائي
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
-    if (!selectedCategory) {
-      setErrorMsg('Please select a category first.');
+    if (cart.length === 0 && servicesCart.length === 0) {
+      setErrorMsg('Cart is empty. Please add items.');
       return;
     }
 
@@ -81,29 +129,29 @@ export default function NewOrder() {
     setSuccessMsg('');
 
     const payload = {
-      plate_number: plateNumber,
-      category_id: selectedCategory.id,
-      category_name: selectedCategory.name,
-      category_price: parseFloat(selectedCategory.price),
-      price_type: selectedCategory.price_type,
-      meters: selectedCategory.price_type === 'per_meter' ? parseFloat(meters) : 1,
-      additional_services: selectedServices.map((s) => ({ id: s.id, price: s.price })),
+      items: cart.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        price: parseFloat(item.price),
+      })),
+      additional_services: servicesCart.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        price: parseFloat(item.price),
+      })),
       total_amount: totalAmount,
     };
 
     try {
       const res = await axios.post(ORDERS_API, payload, { withCredentials: true });
       if (res.data.success) {
-        setSuccessMsg(`Order #${res.data.order_id} created successfully! 🎉`);
-        // Reset Form
-        setSelectedCategory(null);
-        setMeters(1);
-        setSelectedServices([]);
-        setPlateNumber('');
+        setSuccessMsg(`Order #${res.data.order_id} submitted successfully! 🎉`);
+        setCart([]);
+        setServicesCart([]);
       }
     } catch (err) {
       console.error('Create order error:', err);
-      setErrorMsg(err.response?.data?.message || 'Failed to create order.');
+      setErrorMsg(err.response?.data?.message || 'Failed to submit order.');
     } finally {
       setSubmitting(false);
     }
@@ -116,124 +164,97 @@ export default function NewOrder() {
   return (
     <div className="pos-container">
       <div className="pos-header">
-        <h2>New Order</h2>
-        <p>Select category, additional services, and calculate total</p>
+        <h2>New Order / POS</h2>
+        <p>Click categories or additional services to add quantities, then submit order</p>
       </div>
 
       {successMsg && <div className="alert alert-success">{successMsg}</div>}
       {errorMsg && <div className="alert alert-danger">{errorMsg}</div>}
 
       <form onSubmit={handleSubmitOrder} className="pos-layout">
-        {/* Left Column: Selection */}
         <div className="pos-main">
-          {/* 1. Category Selection */}
+          {/* Categories Grid */}
           <div className="pos-card">
-            <h3>1. Select Category</h3>
+            <h3>1. Categories (Car Types)</h3>
             <div className="categories-grid">
               {categories.map((cat) => (
                 <div
                   key={cat.id}
-                  className={`category-card ${selectedCategory?.id === cat.id ? 'active' : ''}`}
-                  onClick={() => setSelectedCategory(cat)}
+                  className="category-card"
+                  onClick={() => addToCart(cat)}
                 >
                   <div className="cat-name">{cat.name}</div>
-                  <div className="cat-price">
-                    {Number(cat.price).toLocaleString()} L.L
-                    {cat.price_type === 'per_meter' && <span className="cat-unit"> / Meter</span>}
-                  </div>
+                  <div className="cat-price">{Number(cat.price).toLocaleString()} L.L</div>
+                  <div className="cat-action-hint">➕ Add</div>
                 </div>
               ))}
             </div>
-
-            {/* Meters Input (if per_meter) */}
-            {selectedCategory?.price_type === 'per_meter' && (
-              <div className="meter-input-box">
-                <label>Enter Meters / Length:</label>
-                <input
-                  type="number"
-                  min="0.5"
-                  step="0.5"
-                  value={meters}
-                  onChange={(e) => setMeters(e.target.value)}
-                />
-              </div>
-            )}
           </div>
 
-          {/* 2. Additional Services Button & Selected Preview */}
+          {/* Additional Services Grid (Directly on page, no popup) */}
           <div className="pos-card">
             <h3>2. Additional Services</h3>
-            <button
-              type="button"
-              className="btn-choose-services"
-              onClick={() => setIsModalOpen(true)}
-            >
-              Choose Additional Services
-            </button>
-
-            {/* Preview of selected services */}
-            {selectedServices.length > 0 && (
-              <div className="selected-pills-container">
-                {selectedServices.map((serv) => (
-                  <span key={serv.id} className="service-pill">
-                    {serv.name} (+{Number(serv.price).toLocaleString()} L.L)
-                    <button
-                      type="button"
-                      className="remove-pill"
-                      onClick={() => toggleService(serv)}
-                    >
-                      &times;
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 3. Vehicle Info */}
-          <div className="pos-card">
-            <h3>3. Vehicle Information (Optional)</h3>
-            <div className="form-group">
-              <label>Plate Number / Description</label>
-              <input
-                type="text"
-                placeholder="e.g. 123456 G or Black BMW"
-                value={plateNumber}
-                onChange={(e) => setPlateNumber(e.target.value)}
-              />
+            <div className="categories-grid">
+              {services.map((serv) => (
+                <div
+                  key={serv.id}
+                  className="category-card service-grid-card"
+                  onClick={() => addServiceToCart(serv)}
+                >
+                  <div className="cat-name">{serv.name}</div>
+                  <div className="cat-price">+{Number(serv.price).toLocaleString()} L.L</div>
+                  <div className="cat-action-hint service-hint">➕ Add</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Right Column: Order Summary */}
+        {/* Sidebar Summary & Cart */}
         <div className="pos-sidebar">
           <div className="summary-card">
-            <h3>Order Summary</h3>
+            <h3>Order Summary Cart</h3>
 
             <div className="summary-section">
-              <div className="summary-row header-row">
-                <span>Item</span>
-                <span>Amount</span>
-              </div>
-
-              {selectedCategory ? (
-                <div className="summary-row">
-                  <span>
-                    {selectedCategory.name}
-                    {selectedCategory.price_type === 'per_meter' && ` (${meters}m)`}
-                  </span>
-                  <span>{calculateCategoryCost().toLocaleString()} L.L</span>
-                </div>
+              {cart.length === 0 && servicesCart.length === 0 ? (
+                <div className="summary-row empty-row">Cart is empty</div>
               ) : (
-                <div className="summary-row empty-row">No category selected</div>
-              )}
+                <>
+                  {cart.map((item) => (
+                    <div key={`cat-${item.id}`} className="cart-item-row">
+                      <div className="cart-item-info">
+                        <span className="cart-item-name">{item.name}</span>
+                        <span className="cart-item-price">
+                          {(item.price * item.quantity).toLocaleString()} L.L
+                        </span>
+                      </div>
+                      <div className="cart-item-controls">
+                        <button type="button" onClick={() => updateQuantity(item.id, -1)}>-</button>
+                        <span>{item.quantity}</span>
+                        <button type="button" onClick={() => updateQuantity(item.id, 1)}>+</button>
+                        <button type="button" className="btn-remove-clean" onClick={() => removeFromCart(item.id)}>×</button>
+                      </div>
+                    </div>
+                  ))}
 
-              {selectedServices.map((serv) => (
-                <div key={serv.id} className="summary-row service-row">
-                  <span>+ {serv.name}</span>
-                  <span>{Number(serv.price).toLocaleString()} L.L</span>
-                </div>
-              ))}
+                  {servicesCart.map((item) => (
+                    <div key={`serv-${item.id}`} className="cart-item-row service-cart-row">
+                      <div className="cart-item-info">
+                        <span className="cart-item-name">+ {item.name}</span>
+                        <span className="cart-item-price">
+                          {(item.price * item.quantity).toLocaleString()} L.L
+                        </span>
+                      </div>
+                      <div className="cart-item-controls">
+                        <button type="button" onClick={() => updateServiceQuantity(item.id, -1)}>-</button>
+                        <span>{item.quantity}</span>
+                        <button type="button" onClick={() => updateServiceQuantity(item.id, 1)}>+</button>
+                        <button type="button" className="btn-remove-clean" onClick={() => removeServiceFromCart(item.id)}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
 
             <div className="summary-divider"></div>
@@ -246,66 +267,13 @@ export default function NewOrder() {
             <button
               type="submit"
               className="btn-submit-order"
-              disabled={!selectedCategory || submitting}
+              disabled={(cart.length === 0 && servicesCart.length === 0) || submitting}
             >
-              {submitting ? 'Creating Order...' : 'Submit Order'}
+              {submitting ? 'Submitting...' : 'Submit Order'}
             </button>
           </div>
         </div>
       </form>
-
-      {/* POPUP MODAL FOR SERVICES */}
-      {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Select Additional Services</h3>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setIsModalOpen(false)}
-              >
-                &times;
-              </button>
-            </div>
-
-            <div className="modal-body">
-              {services.length === 0 ? (
-                <p className="no-services">No additional services available.</p>
-              ) : (
-                <div className="services-grid">
-                  {services.map((serv) => {
-                    const isSelected = selectedServices.some((s) => s.id === serv.id);
-                    return (
-                      <div
-                        key={serv.id}
-                        className={`service-card ${isSelected ? 'active' : ''}`}
-                        onClick={() => toggleService(serv)}
-                      >
-                        <input type="checkbox" checked={isSelected} readOnly />
-                        <div className="serv-info">
-                          <span className="serv-name">{serv.name}</span>
-                          <span className="serv-price">+{Number(serv.price).toLocaleString()} L.L</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn-modal-done"
-                onClick={() => setIsModalOpen(false)}
-              >
-                Done ({selectedServices.length} Selected)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
