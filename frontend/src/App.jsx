@@ -6,40 +6,68 @@ import Categories from './pages/Categories';
 import AdditionalServices from './pages/AdditionalServices';
 import NewOrder from './pages/NewOrder';
 import Orders from './pages/Orders';
-import Report from './pages/DailyReport'; 
-import Expenses from './pages/Expenses'; 
+import Report from './pages/DailyReport';
+import Expenses from './pages/Expenses';
+import MonthlyReport from './pages/MonthlyReport';
+import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
 
 function App() {
   const { admin, loading } = useAuth();
-  const [activePage, setActivePage] = useState('categories');
+
+  const [activePage, setActivePage] = useState('dashboard');
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        Loading...
+      </div>
+    );
   }
 
   if (!admin) {
     return <Login />;
   }
 
-  // Render logic based on activePage
   const renderContent = () => {
     switch (activePage) {
+      case 'dashboard':
+        return <Dashboard setActivePage={setActivePage} />;
+
       case 'categories':
         return <Categories />;
+
       case 'additional-services':
-      case 'services': // In case the Sidebar passes 'services' as the key
+      case 'services':
         return <AdditionalServices />;
+
       case 'new-order':
         return <NewOrder />;
+
       case 'orders':
         return <Orders />;
+
       case 'daily-report':
-        return <Report />; 
+        return <Report />;
+
       case 'expenses':
         return <Expenses />;
+
+      case 'monthly-report':
+        return <MonthlyReport />;
+        
+      case 'settings':
+        return <Settings />;
+
       default:
         return (
-          <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '12px' }}>
+          <div
+            style={{
+              padding: '20px',
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+            }}
+          >
             <h2>{activePage.toUpperCase()} Page</h2>
             <p>Coming soon...</p>
           </div>
@@ -48,7 +76,10 @@ function App() {
   };
 
   return (
-    <Layout activePage={activePage} setActivePage={setActivePage}>
+    <Layout
+      activePage={activePage}
+      setActivePage={setActivePage}
+    >
       {renderContent()}
     </Layout>
   );

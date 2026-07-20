@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import './Login.css'; // 👈 Exporting l-CSS file
+import './Login.css';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -18,8 +18,11 @@ export default function Login() {
 
     try {
       const result = await login(email, password);
-      if (!result.success) {
-        setError(result.message || 'Invalid email or password.');
+      if (result && result.success) {
+        // حفظ الإيميل محلياً لعرضه في صفحة الإعدادات (Settings)
+        localStorage.setItem('userEmail', email);
+      } else {
+        setError(result?.message || 'Invalid email or password.');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong. Please try again.');
