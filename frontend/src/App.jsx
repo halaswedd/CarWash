@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Categories from './pages/Categories';
 import AdditionalServices from './pages/AdditionalServices';
 import NewOrder from './pages/NewOrder';
+import Orders from './pages/Orders';
 
 function App() {
   const { admin, loading } = useAuth();
@@ -28,6 +29,8 @@ function App() {
         return <AdditionalServices />;
       case 'new-order':
         return <NewOrder />;
+      case 'orders':
+        return <Orders />;
       default:
         return (
           <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '12px' }}>
