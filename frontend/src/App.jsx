@@ -10,7 +10,6 @@ import Report from './pages/DailyReport';
 import Expenses from './pages/Expenses';
 import MonthlyReport from './pages/MonthlyReport';
 import Dashboard from './pages/Dashboard';
-import Settings from './pages/Settings';
 
 function App() {
   const { admin, loading } = useAuth();
@@ -55,9 +54,6 @@ function App() {
 
       case 'monthly-report':
         return <MonthlyReport />;
-        
-      case 'settings':
-        return <Settings />;
 
       default:
         return (
