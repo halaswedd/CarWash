@@ -10,9 +10,14 @@ export default function NewOrder() {
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
 
-  // السلال (carts) للفئات والخدمات الإضافية مع الكميات
+  // السلال (carts) للفئات والخدمات الإضافية
   const [cart, setCart] = useState([]);
   const [servicesCart, setServicesCart] = useState([]);
+
+  // حالة الـ Pop-up الخاصة بالمتر (للسجاد مثلاً)
+  const [showMeterModal, setShowMeterModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [meterInput, setMeterInput] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -41,27 +46,71 @@ export default function NewOrder() {
     }
   };
 
-  // إدارة سلة الفئات (Categories Cart)
-  const addToCart = (category) => {
+  // التعامل مع النقر على الفئة (Category Click)
+  const handleCategoryClick = (category) => {
+    if (category.price_type === 'per_meter') {
+      setSelectedCategory(category);
+      setMeterInput('');
+      setShowMeterModal(true);
+    } else {
+      addToCartRegular(category);
+    }
+  };
+
+  // إضافة فئة ذات سعر ثابت للعربة
+  const addToCartRegular = (category) => {
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === category.id);
+      const existingItem = prevCart.find((item) => item.id === category.id && item.price_type !== 'per_meter');
       if (existingItem) {
         return prevCart.map((item) =>
-          item.id === category.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === category.id && item.price_type !== 'per_meter'
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         );
       } else {
-        return [...prevCart, { ...category, quantity: 1 }];
+        return [...prevCart, { ...category, cartItemId: Date.now(), quantity: 1, displayPrice: parseFloat(category.price) }];
       }
     });
   };
 
-  const updateQuantity = (id, delta) => {
+  // تأكيد إدخال الأمتار من الـ Pop-up (أرقام صحيحة حصراً بين 1 و 100)
+  const handleConfirmMeters = (e) => {
+    e.preventDefault();
+    const meters = parseInt(meterInput, 10);
+
+    if (isNaN(meters) || meters < 1 || meters > 100) {
+      alert('Please enter a valid whole number of meters between 1 and 100.');
+      return;
+    }
+
+    const unitPrice = parseFloat(selectedCategory.price) || 0;
+    const totalPrice = unitPrice * meters;
+
+    setCart((prevCart) => [
+      ...prevCart,
+      {
+        ...selectedCategory,
+        cartItemId: Date.now(),
+        quantity: 1,
+        meters: meters,
+        displayPrice: totalPrice,
+      },
+    ]);
+
+    setShowMeterModal(false);
+    setSelectedCategory(null);
+    setMeterInput('');
+  };
+
+  const updateQuantity = (cartItemId, delta) => {
     setCart((prevCart) => {
       return prevCart
         .map((item) => {
-          if (item.id === id) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          if (item.cartItemId === cartItemId) {
+            if (item.price_type !== 'per_meter') {
+              const newQty = item.quantity + delta;
+              return newQty > 0 ? { ...item, quantity: newQty } : null;
+            }
           }
           return item;
         })
@@ -69,8 +118,8 @@ export default function NewOrder() {
     });
   };
 
-  const removeFromCart = (id) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  const removeFromCart = (cartItemId) => {
+    setCart((prevCart) => prevCart.filter((item) => item.cartItemId !== cartItemId));
   };
 
   // إدارة سلة الخدمات الإضافية (Services Cart)
@@ -105,9 +154,15 @@ export default function NewOrder() {
     setServicesCart((prevCart) => prevCart.filter((item) => item.id !== id));
   };
 
-  // الحسابات
+  // الحسابات الإجمالية
   const calculateItemsCost = () => {
-    return cart.reduce((sum, item) => sum + (parseFloat(item.price) || 0) * item.quantity, 0);
+    return cart.reduce((sum, item) => {
+      if (item.price_type === 'per_meter') {
+        return sum + (item.displayPrice || 0);
+      } else {
+        return sum + (parseFloat(item.price) || 0) * item.quantity;
+      }
+    }, 0);
   };
 
   const calculateServicesCost = () => {
@@ -116,7 +171,7 @@ export default function NewOrder() {
 
   const totalAmount = calculateItemsCost() + calculateServicesCost();
 
-  // إرسال الطلب النهائي
+  // إرسال الطلب النهائي للـ Backend
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
     if (cart.length === 0 && servicesCart.length === 0) {
@@ -132,7 +187,8 @@ export default function NewOrder() {
       items: cart.map((item) => ({
         id: item.id,
         quantity: item.quantity,
-        price: parseFloat(item.price),
+        price: item.price_type === 'per_meter' ? item.displayPrice / item.meters : parseFloat(item.price),
+        meters: item.price_type === 'per_meter' ? item.meters : null,
       })),
       additional_services: servicesCart.map((item) => ({
         id: item.id,
@@ -165,7 +221,7 @@ export default function NewOrder() {
     <div className="pos-container">
       <div className="pos-header">
         <h2>New Order / POS</h2>
-        <p>Click categories or additional services to add quantities, then submit order</p>
+        <p>Click categories or additional services. Carpet/Per-meter items will ask for meters.</p>
       </div>
 
       {successMsg && <div className="alert alert-success">{successMsg}</div>}
@@ -175,21 +231,22 @@ export default function NewOrder() {
         <div className="pos-main">
           {/* Categories Grid */}
           <div className="pos-card">
-            <h3>1. Categories (Car Types)</h3>
+            <h3>1. Categories (Car Types & Carpets)</h3>
             <div className="categories-grid">
               {categories.map((cat) => (
                 <div
                   key={cat.id}
                   className="category-card"
-                  onClick={() => addToCart(cat)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleCategoryClick(cat)}
                 >
-                  <div className="cat-name" style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: 'bold' }}>{cat.name}</span>
-                    <span style={{ fontSize: '13px', color: '#666' }}>{cat.name_ar}</span>
+                  <div className="cat-name">
+                    <span>{cat.name}</span>
+                    <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>{cat.name_ar}</span>
                   </div>
-                  <div className="cat-price" style={{ marginTop: '8px' }}>{Number(cat.price).toLocaleString()} L.L</div>
-                  <div className="cat-action-hint">➕ Add</div>
+                  <div className="cat-price">
+                    {Number(cat.price).toLocaleString()} L.L {cat.price_type === 'per_meter' ? '/ m²' : ''}
+                  </div>
+                  <div className="cat-action-hint">Add</div>
                 </div>
               ))}
             </div>
@@ -204,14 +261,13 @@ export default function NewOrder() {
                   key={serv.id}
                   className="category-card service-grid-card"
                   onClick={() => addServiceToCart(serv)}
-                  style={{ cursor: 'pointer' }}
                 >
-                  <div className="cat-name" style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: 'bold' }}>{serv.name}</span>
-                    <span style={{ fontSize: '13px', color: '#666' }}>{serv.name_ar}</span>
+                  <div className="cat-name">
+                    <span>{serv.name}</span>
+                    <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>{serv.name_ar}</span>
                   </div>
-                  <div className="cat-price" style={{ marginTop: '8px' }}>+{Number(serv.price).toLocaleString()} L.L</div>
-                  <div className="cat-action-hint service-hint">➕ Add</div>
+                  <div className="cat-price" style={{ color: '#0369a1' }}>+{Number(serv.price).toLocaleString()} L.L</div>
+                  <div className="cat-action-hint service-hint">Add</div>
                 </div>
               ))}
             </div>
@@ -225,37 +281,44 @@ export default function NewOrder() {
 
             <div className="summary-section">
               {cart.length === 0 && servicesCart.length === 0 ? (
-                <div className="summary-row empty-row">Cart is empty</div>
+                <div className="empty-row">Cart is empty</div>
               ) : (
                 <>
                   {cart.map((item) => (
-                    <div key={`cat-${item.id}`} className="cart-item-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <div className="cart-item-info" style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="cart-item-name" style={{ fontWeight: 'bold' }}>{item.name}</span>
-                        <span className="cart-item-name-ar" style={{ fontSize: '12px', color: '#666' }}>{item.name_ar}</span>
-                        <span className="cart-item-price" style={{ color: '#27ae60', marginTop: '2px' }}>
-                          {(item.price * item.quantity).toLocaleString()} L.L
+                    <div key={`cart-${item.cartItemId}`} className="cart-item-row">
+                      <div className="cart-item-info">
+                        <span className="cart-item-name">{item.name} ({item.name_ar})</span>
+                        {item.price_type === 'per_meter' && (
+                          <span style={{ fontSize: '11px', color: '#64748b' }}>Meters: {item.meters}</span>
+                        )}
+                        <span className="cart-item-price">
+                          {item.price_type === 'per_meter' 
+                            ? `${item.displayPrice.toLocaleString()} L.L` 
+                            : `${(item.price * item.quantity).toLocaleString()} L.L`}
                         </span>
                       </div>
-                      <div className="cart-item-controls" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <button type="button" onClick={() => updateQuantity(item.id, -1)}>-</button>
-                        <span>{item.quantity}</span>
-                        <button type="button" onClick={() => updateQuantity(item.id, 1)}>+</button>
-                        <button type="button" className="btn-remove-clean" onClick={() => removeFromCart(item.id)}>×</button>
+                      <div className="cart-item-controls">
+                        {item.price_type !== 'per_meter' && (
+                          <>
+                            <button type="button" onClick={() => updateQuantity(item.cartItemId, -1)}>-</button>
+                            <span>{item.quantity}</span>
+                            <button type="button" onClick={() => updateQuantity(item.cartItemId, 1)}>+</button>
+                          </>
+                        )}
+                        <button type="button" className="btn-remove-clean" onClick={() => removeFromCart(item.cartItemId)}>×</button>
                       </div>
                     </div>
                   ))}
 
                   {servicesCart.map((item) => (
-                    <div key={`serv-${item.id}`} className="cart-item-row service-cart-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <div className="cart-item-info" style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="cart-item-name" style={{ fontWeight: 'bold' }}>+ {item.name}</span>
-                        <span className="cart-item-name-ar" style={{ fontSize: '12px', color: '#666' }}>{item.name_ar}</span>
-                        <span className="cart-item-price" style={{ color: '#27ae60', marginTop: '2px' }}>
+                    <div key={`serv-${item.id}`} className="cart-item-row service-cart-row">
+                      <div className="cart-item-info">
+                        <span className="cart-item-name">+ {item.name} ({item.name_ar})</span>
+                        <span className="cart-item-price">
                           {(item.price * item.quantity).toLocaleString()} L.L
                         </span>
                       </div>
-                      <div className="cart-item-controls" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div className="cart-item-controls">
                         <button type="button" onClick={() => updateServiceQuantity(item.id, -1)}>-</button>
                         <span>{item.quantity}</span>
                         <button type="button" onClick={() => updateServiceQuantity(item.id, 1)}>+</button>
@@ -284,6 +347,46 @@ export default function NewOrder() {
           </div>
         </div>
       </form>
+
+      {/* Meter Input Modal (Pop-up) */}
+      {showMeterModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Enter Meters for {selectedCategory?.name}</h3>
+            <p>
+              Price per meter: {Number(selectedCategory?.price).toLocaleString()} L.L
+            </p>
+            <form onSubmit={handleConfirmMeters}>
+              <input
+                type="number"
+                step="1"
+                min="1"
+                max="100"
+                placeholder="Enter meters (e.g. 5)"
+                value={meterInput}
+                onChange={(e) => setMeterInput(e.target.value)}
+                autoFocus
+                className="modal-input"
+              />
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  onClick={() => setShowMeterModal(false)}
+                  className="btn-modal-cancel"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-modal-confirm"
+                >
+                  Add to Cart
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
