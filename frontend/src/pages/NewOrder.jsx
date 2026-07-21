@@ -204,7 +204,7 @@ export default function NewOrder() {
     try {
       const res = await axios.post(ORDERS_API, payload, { withCredentials: true });
       if (res.data.success) {
-        setSuccessMsg(`Order #${res.data.order_id} submitted successfully! 🎉`);
+        setSuccessMsg(`Order #${res.data.order_id} submitted successfully!`);
         setCart([]);
         setServicesCart([]);
       }
