@@ -53,7 +53,7 @@ export default function Dashboard({ setActivePage }) {
           <div className="stat-card-info">
             <span className="stat-title">REVENUE TODAY</span>
             <span className="stat-number">
-              {loading ? '...' : `${Number(stats.revenue_today || 0).toLocaleString()} L.L`}
+              {loading ? '...' : `$${Number(stats.revenue_today || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </span>
           </div>
           <div className="stat-icon-box currency-bg">
@@ -83,7 +83,7 @@ export default function Dashboard({ setActivePage }) {
           <div className="stat-card-info">
             <span className="stat-title">REVENUE THIS MONTH</span>
             <span className="stat-number">
-              {loading ? '...' : `${Number(stats.revenue_month || 0).toLocaleString()} L.L`}
+              {loading ? '...' : `$${Number(stats.revenue_month || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </span>
           </div>
           <div className="stat-icon-box trend-bg">
@@ -98,7 +98,7 @@ export default function Dashboard({ setActivePage }) {
           <div className="stat-card-info">
             <span className="stat-title">MONTHLY EXPENSES</span>
             <span className="stat-number expense-color">
-              {loading ? '...' : `${Number(stats.monthly_expenses || 0).toLocaleString()} L.L`}
+              {loading ? '...' : `$${Number(stats.monthly_expenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </span>
           </div>
           <div className="stat-icon-box wallet-bg">
@@ -111,7 +111,7 @@ export default function Dashboard({ setActivePage }) {
         </div>
       </div>
 
-      {/* قسم الإجراءات السريعة (Quick Actions) مع الأيقونات و setActivePage */}
+      {/* قسم الإجراءات السريعة (Quick Actions) */}
       <div className="quick-actions-section">
         <h3>Quick actions</h3>
         <div className="quick-actions-grid">
@@ -171,9 +171,7 @@ export default function Dashboard({ setActivePage }) {
               </svg>
             </span>
             <span className="qa-text">Daily PDF</span>
-          </button>
-
-          <button className="quick-action-card" onClick={() => setActivePage('monthly-report')}>
+          </button><button className="quick-action-card" onClick={() => setActivePage('monthly-report')}>
             <span className="qa-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>

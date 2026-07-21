@@ -6,6 +6,8 @@ const CATEGORIES_API = 'http://localhost/carwash/backend/api/categories.php';
 const SERVICES_API = 'http://localhost/carwash/backend/api/additional_services.php';
 const ORDERS_API = 'http://localhost/carwash/backend/api/orders.php';
 
+const EXCHANGE_RATE = 89000;
+
 export default function NewOrder() {
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
@@ -154,7 +156,7 @@ export default function NewOrder() {
     setServicesCart((prevCart) => prevCart.filter((item) => item.id !== id));
   };
 
-  // الحسابات الإجمالية
+  // الحسابات الإجمالية بالليرة
   const calculateItemsCost = () => {
     return cart.reduce((sum, item) => {
       if (item.price_type === 'per_meter') {
@@ -169,7 +171,8 @@ export default function NewOrder() {
     return servicesCart.reduce((sum, item) => sum + (parseFloat(item.price) || 0) * item.quantity, 0);
   };
 
-  const totalAmount = calculateItemsCost() + calculateServicesCost();
+  const totalAmountLL = calculateItemsCost() + calculateServicesCost();
+  const totalAmountUSD = totalAmountLL / EXCHANGE_RATE;
 
   // إرسال الطلب النهائي للـ Backend
   const handleSubmitOrder = async (e) => {
@@ -195,7 +198,7 @@ export default function NewOrder() {
         quantity: item.quantity,
         price: parseFloat(item.price),
       })),
-      total_amount: totalAmount,
+      total_amount: totalAmountLL,
     };
 
     try {
@@ -233,22 +236,29 @@ export default function NewOrder() {
           <div className="pos-card">
             <h3>1. Categories (Car Types & Carpets)</h3>
             <div className="categories-grid">
-              {categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className="category-card"
-                  onClick={() => handleCategoryClick(cat)}
-                >
-                  <div className="cat-name">
-                    <span>{cat.name}</span>
-                    <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>{cat.name_ar}</span>
+              {categories.map((cat) => {
+                const priceLL = parseFloat(cat.price) || 0;
+                const priceUSD = priceLL / EXCHANGE_RATE;
+                return (
+                  <div
+                    key={cat.id}
+                    className="category-card"
+                    onClick={() => handleCategoryClick(cat)}
+                  >
+                    <div className="cat-name">
+                      <span>{cat.name}</span>
+                      <span className="cat-name-ar">{cat.name_ar}</span>
+                    </div>
+                    <div className="cat-price">
+                      <div>{priceLL.toLocaleString()} L.L {cat.price_type === 'per_meter' ? '/ m²' : ''}</div>
+                      <div className="cat-price-usd">
+                        ${priceUSD.toFixed(2)} {cat.price_type === 'per_meter' ? '/ m²' : ''}
+                      </div>
+                    </div>
+                    <div className="cat-action-hint">Add</div>
                   </div>
-                  <div className="cat-price">
-                    {Number(cat.price).toLocaleString()} L.L {cat.price_type === 'per_meter' ? '/ m²' : ''}
-                  </div>
-                  <div className="cat-action-hint">Add</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -256,20 +266,27 @@ export default function NewOrder() {
           <div className="pos-card">
             <h3>2. Additional Services</h3>
             <div className="categories-grid">
-              {services.map((serv) => (
-                <div
-                  key={serv.id}
-                  className="category-card service-grid-card"
-                  onClick={() => addServiceToCart(serv)}
-                >
-                  <div className="cat-name">
-                    <span>{serv.name}</span>
-                    <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>{serv.name_ar}</span>
+              {services.map((serv) => {
+                const priceLL = parseFloat(serv.price) || 0;
+                const priceUSD = priceLL / EXCHANGE_RATE;
+                return (
+                  <div
+                    key={serv.id}
+                    className="category-card service-grid-card"
+                    onClick={() => addServiceToCart(serv)}
+                  >
+                    <div className="cat-name">
+                      <span>{serv.name}</span>
+                      <span className="cat-name-ar">{serv.name_ar}</span>
+                    </div>
+                    <div className="cat-price" style={{ color: '#0369a1' }}>
+                      <div>+{priceLL.toLocaleString()} L.L</div>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold' }}>+${priceUSD.toFixed(2)}</div>
+                    </div>
+                    <div className="cat-action-hint service-hint">Add</div>
                   </div>
-                  <div className="cat-price" style={{ color: '#0369a1' }}>+{Number(serv.price).toLocaleString()} L.L</div>
-                  <div className="cat-action-hint service-hint">Add</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -284,57 +301,73 @@ export default function NewOrder() {
                 <div className="empty-row">Cart is empty</div>
               ) : (
                 <>
-                  {cart.map((item) => (
-                    <div key={`cart-${item.cartItemId}`} className="cart-item-row">
-                      <div className="cart-item-info">
-                        <span className="cart-item-name">{item.name} ({item.name_ar})</span>
-                        {item.price_type === 'per_meter' && (
-                          <span style={{ fontSize: '11px', color: '#64748b' }}>Meters: {item.meters}</span>
-                        )}
-                        <span className="cart-item-price">
-                          {item.price_type === 'per_meter' 
-                            ? `${item.displayPrice.toLocaleString()} L.L` 
-                            : `${(item.price * item.quantity).toLocaleString()} L.L`}
-                        </span>
-                      </div>
-                      <div className="cart-item-controls">
-                        {item.price_type !== 'per_meter' && (
-                          <>
-                            <button type="button" onClick={() => updateQuantity(item.cartItemId, -1)}>-</button>
-                            <span>{item.quantity}</span>
-                            <button type="button" onClick={() => updateQuantity(item.cartItemId, 1)}>+</button>
-                          </>
-                        )}
-                        <button type="button" className="btn-remove-clean" onClick={() => removeFromCart(item.cartItemId)}>×</button>
-                      </div>
-                    </div>
-                  ))}
+                  {cart.map((item) => {
+                    const itemTotalLL = item.price_type === 'per_meter' 
+                      ? (item.displayPrice || 0) 
+                      : (parseFloat(item.price) || 0) * item.quantity;
+                    const itemTotalUSD = itemTotalLL / EXCHANGE_RATE;
 
-                  {servicesCart.map((item) => (
-                    <div key={`serv-${item.id}`} className="cart-item-row service-cart-row">
-                      <div className="cart-item-info">
-                        <span className="cart-item-name">+ {item.name} ({item.name_ar})</span>
-                        <span className="cart-item-price">
-                          {(item.price * item.quantity).toLocaleString()} L.L
-                        </span>
+                    return (
+                      <div key={`cart-${item.cartItemId}`} className="cart-item-row">
+                        <div className="cart-item-info">
+                          <span className="cart-item-name">{item.name} ({item.name_ar})</span>
+                          {item.price_type === 'per_meter' && (
+                            <span className="cart-item-meta">Meters: {item.meters}</span>
+                          )}
+                          <span className="cart-item-price">
+                            {itemTotalLL.toLocaleString()} L.L <span className="cart-item-usd">(${itemTotalUSD.toFixed(2)})</span>
+                          </span>
+                        </div>
+                        <div className="cart-item-controls">
+                          {item.price_type !== 'per_meter' && (
+                            <>
+                              <button type="button" onClick={() => updateQuantity(item.cartItemId, -1)}>-</button>
+                              <span>{item.quantity}</span>
+                              <button type="button" onClick={() => updateQuantity(item.cartItemId, 1)}>+</button>
+                            </>
+                          )}
+                          <button type="button" className="btn-remove-clean" onClick={() => removeFromCart(item.cartItemId)}>×</button>
+                        </div>
                       </div>
-                      <div className="cart-item-controls">
-                        <button type="button" onClick={() => updateServiceQuantity(item.id, -1)}>-</button>
-                        <span>{item.quantity}</span>
-                        <button type="button" onClick={() => updateServiceQuantity(item.id, 1)}>+</button>
-                        <button type="button" className="btn-remove-clean" onClick={() => removeServiceFromCart(item.id)}>×</button>
+                    );
+                  })}
+
+                  {servicesCart.map((item) => {
+                    const servTotalLL = (parseFloat(item.price) || 0) * item.quantity;
+                    const servTotalUSD = servTotalLL / EXCHANGE_RATE;
+
+                    return (
+                      <div key={`serv-${item.id}`} className="cart-item-row service-cart-row">
+                        <div className="cart-item-info">
+                          <span className="cart-item-name">+ {item.name} ({item.name_ar})</span>
+                          <span className="cart-item-price">
+                            {servTotalLL.toLocaleString()} L.L <span className="cart-item-usd">(${servTotalUSD.toFixed(2)})</span>
+                          </span>
+                        </div>
+                        <div className="cart-item-controls">
+                          <button type="button" onClick={() => updateServiceQuantity(item.id, -1)}>-</button>
+                          <span>{item.quantity}</span>
+                          <button type="button" onClick={() => updateServiceQuantity(item.id, 1)}>+</button>
+                          <button type="button" className="btn-remove-clean" onClick={() => removeServiceFromCart(item.id)}>×</button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </>
               )}
             </div>
 
             <div className="summary-divider"></div>
 
-            <div className="total-box">
-              <span>Total Amount</span>
-              <span className="total-price">{totalAmount.toLocaleString()} L.L</span>
+            <div className="total-box-dual">
+              <div className="total-row">
+                <span>Total (L.L)</span>
+                <span className="total-val">{totalAmountLL.toLocaleString()} L.L</span>
+              </div>
+              <div className="total-row">
+                <span>Total (USD)</span>
+                <span className="total-val">${totalAmountUSD.toFixed(2)}</span>
+              </div>
             </div>
 
             <button
@@ -354,7 +387,7 @@ export default function NewOrder() {
           <div className="modal-content">
             <h3>Enter Meters for {selectedCategory?.name}</h3>
             <p>
-              Price per meter: {Number(selectedCategory?.price).toLocaleString()} L.L
+              Price per meter: {Number(selectedCategory?.price).toLocaleString()} L.L (${(parseFloat(selectedCategory?.price || 0) / EXCHANGE_RATE).toFixed(2)})
             </p>
             <form onSubmit={handleConfirmMeters}>
               <input

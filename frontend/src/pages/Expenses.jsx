@@ -32,6 +32,7 @@ export default function Expenses() {
   
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('USD'); // اختيار العملة الافتراضية
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -63,13 +64,18 @@ export default function Expenses() {
       setSubmitting(true);
       const res = await axios.post(
         EXPENSES_API,
-        { title, amount: parseFloat(amount) },
+        { 
+          title, 
+          amount: parseFloat(amount),
+          currency 
+        },
         { withCredentials: true }
       );
 
       if (res.data.success) {
         setTitle('');
         setAmount('');
+        setCurrency('USD');
         setIsModalOpen(false);
         fetchExpenses();
       }
@@ -104,7 +110,7 @@ export default function Expenses() {
       <div className="expenses-top-header">
         <div>
           <h2>Expenses</h2>
-          <p>Monthly expenses (rent, salaries, supplies, etc.).</p>
+          <p>Monthly expenses (rent, salaries, supplies, etc.) in USD.</p>
         </div>
         <button className="btn-add-expense-main" onClick={() => setIsModalOpen(true)}>
           ➕ Add Expense
@@ -142,7 +148,7 @@ export default function Expenses() {
         </div>
 
         <div className="filter-total">
-          Total: <span>{Number(totalExpenses).toLocaleString()} L.L</span>
+          Total: <span>${Number(totalExpenses).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       </div>
 
@@ -168,7 +174,8 @@ export default function Expenses() {
               <thead>
                 <tr>
                   <th>Title / Reason</th>
-                  <th>Amount</th>
+                  <th>Original Amount</th>
+                  <th>Amount (USD)</th>
                   <th>Date & Time</th>
                   <th>Action</th>
                 </tr>
@@ -178,7 +185,10 @@ export default function Expenses() {
                   <tr key={exp.id}>
                     <td className="fw-bold">{exp.title}</td>
                     <td className="expense-amount-cell">
-                      {Number(exp.amount).toLocaleString()} L.L
+                      {Number(exp.original_amount ?? exp.amount).toLocaleString()} {exp.currency || 'USD'}
+                    </td>
+                    <td className="expense-amount-cell" style={{ fontWeight: 'bold', color: '#002b4d' }}>
+                      ${Number(exp.amount_usd ?? exp.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="date-cell">
                       {new Date(exp.created_at).toLocaleString('en-GB', {
@@ -219,16 +229,30 @@ export default function Expenses() {
                 />
               </div>
 
-              <div className="form-group">
-                <label>Amount (L.L)</label>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  step="any"
-                  required
-                />
+              <div className="form-row" style={{ display: 'flex', gap: '10px' }}>
+                <div className="form-group" style={{ flex: 2 }}>
+                  <label>Amount</label>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    step="any"
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Currency</label>
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  >
+                    <option value="USD">USD ($)</option>
+                    <option value="L.L">L.L (ل.ل)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="modal-actions">

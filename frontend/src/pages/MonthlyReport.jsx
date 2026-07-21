@@ -119,21 +119,21 @@ export default function MonthlyReport() {
             <div className="stat-box">
               <span className="stat-label">REVENUE</span>
               <span className="stat-value revenue-color">
-                {Number(reportData.total_revenue).toLocaleString()} L.L
+                {`$${Number(reportData.total_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               </span>
             </div>
 
             <div className="stat-box">
               <span className="stat-label">EXPENSES</span>
               <span className="stat-value expense-color">
-                {Number(reportData.total_expenses).toLocaleString()} L.L
+                {`$${Number(reportData.total_expenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               </span>
             </div>
 
             <div className="stat-box">
               <span className="stat-label">NET PROFIT</span>
               <span className={`stat-value ${reportData.net_profit >= 0 ? 'profit-color' : 'expense-color'}`}>
-                {Number(reportData.net_profit).toLocaleString()} L.L
+                {`$${Number(reportData.net_profit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               </span>
             </div>
           </div>

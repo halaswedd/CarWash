@@ -141,7 +141,7 @@ export default function Orders() {
                     </td>
 
                     <td className="total-cell">
-                      {Number(order.total).toLocaleString()} L.L
+                      {`$${Number(order.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </td>
 
                     <td className="date-cell">

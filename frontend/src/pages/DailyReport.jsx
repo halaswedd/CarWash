@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import './DailyReport.css'; // أو استعمل ملف الـ CSS الخاص فيك
+import './DailyReport.css';
 
 const REPORT_API = 'http://localhost/carwash/backend/api/daily_report.php';
 
+// سعر الصرف المعتمد لتحويل الليرة إلى دولار (يمكنك تعديل القيمة متى شئت)
+const EXCHANGE_RATE = 89000; 
+
 export default function DailyReport() {
-  // الحصول على تاريخ اليوم بصيغة YYYY-MM-DD افتراضياً
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,7 @@ export default function DailyReport() {
   };
 
   const handlePrintPDF = () => {
-    window.print(); // بيفتح نافذة الطباعة الخاصة بالمتصفح لحفظه كـ PDF بشكل نظيف
+    window.print();
   };
 
   return (
@@ -88,7 +90,7 @@ export default function DailyReport() {
               <div className="stat-box">
                 <span className="stat-label">REVENUE</span>
                 <span className="stat-value revenue-text">
-                  {Number(reportData.total_revenue).toLocaleString()} L.L
+                  {`$${((Number(reportData.total_revenue || 0)) / EXCHANGE_RATE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 </span>
               </div>
             </div>
@@ -111,7 +113,7 @@ export default function DailyReport() {
                         <td className="fw-bold">{item.category_name}</td>
                         <td>{item.car_count} Cars</td>
                         <td className="text-primary-color">
-                          {Number(item.category_revenue).toLocaleString()} L.L
+                          {`$${((Number(item.category_revenue || 0)) / EXCHANGE_RATE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </td>
                       </tr>
                     ))}

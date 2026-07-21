@@ -24,23 +24,23 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 try {
     if ($method === 'GET') {
-        $month = intval($_GET['month'] ?? date('m'));
+        $month = intval($_GET['month'] ?? date('n'));
         $year = intval($_GET['year'] ?? date('Y'));
 
-        // جلب المصروفات حسب الشهر والسنة المحددين
+        // جلب المصروفات حسب الشهر والسنة باستخدام الأعمدة الحقيقية بالجدول
         $stmt = $pdo->prepare("
             SELECT * FROM expenses 
-            WHERE MONTH(created_at) = :month AND YEAR(created_at) = :year 
+            WHERE expense_month = :month AND expense_year = :year 
             ORDER BY id DESC
         ");
         $stmt->execute(['month' => $month, 'year' => $year]);
         $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // حساب إجمالي المصروفات للشهر المحدد
+        // حساب إجمالي المصروفات للشهر المحدد بالدولار
         $stmtTotal = $pdo->prepare("
-            SELECT COALESCE(SUM(amount), 0) AS total_expenses 
+            SELECT COALESCE(SUM(COALESCE(amount_usd, amount)), 0) AS total_expenses 
             FROM expenses 
-            WHERE MONTH(created_at) = :month AND YEAR(created_at) = :year
+            WHERE expense_month = :month AND expense_year = :year
         ");
         $stmtTotal->execute(['month' => $month, 'year' => $year]);
         $totalExpenses = $stmtTotal->fetch(PDO::FETCH_ASSOC)['total_expenses'];
@@ -53,17 +53,39 @@ try {
     } 
     elseif ($method === 'POST') {
         $data = json_decode(file_get_contents('php://input'), true);
-        $title = trim($data['title'] ?? '');
+        $name = trim($data['name'] ?? '');
         $amount = floatval($data['amount'] ?? 0);
+        $currency = $data['currency'] ?? 'USD';
 
-        if (empty($title) || $amount <= 0) {
+        if (empty($name) || $amount <= 0) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Please provide a valid title and amount.']);
+            echo json_encode(['success' => false, 'message' => 'Please provide a valid name and amount.']);
             exit();
         }
 
-        $stmt = $pdo->prepare("INSERT INTO expenses (title, amount) VALUES (:title, :amount)");
-        $stmt->execute(['title' => $title, 'amount' => $amount]);
+        // حساب المبلغ بالدولار والتحويل إذا كان بالليرة
+        if ($currency === 'L.L') {
+            $amount_usd = $amount / 89000;
+        } else {
+            $amount_usd = $amount;
+        }
+
+        $expense_month = intval(date('n'));
+        $expense_year = intval(date('Y'));
+
+        // إدخال البيانات مطابقة تماماً لأعمدة جدولك
+        $stmt = $pdo->prepare("
+            INSERT INTO expenses (name, amount, currency, amount_usd, expense_month, expense_year) 
+            VALUES (:name, :amount, :currency, :amount_usd, :expense_month, :expense_year)
+        ");
+        $stmt->execute([
+            'name' => $name,
+            'amount' => $amount,
+            'currency' => $currency,
+            'amount_usd' => $amount_usd,
+            'expense_month' => $expense_month,
+            'expense_year' => $expense_year
+        ]);
 
         echo json_encode([
             'success' => true,

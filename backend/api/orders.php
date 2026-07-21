@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $items = is_array($data['items']) ? $data['items'] : []; // الفئات بالسلّة
         $services = is_array($data['additional_services']) ? $data['additional_services'] : []; // الخدمات الإضافية بالسلّة
-        $total = floatval($data['total_amount'] ?? 0);
+        $total_ll = floatval($data['total_amount'] ?? 0); // الإجمالي بالليرة القادم من الـ Front-end
 
         if (empty($items) && empty($services)) {
             http_response_code(400);
@@ -34,11 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
+        // تحويل الإجمالي الكلي للطلب إلى دولار (بالقسمة على 89,000) ليحفظ بالدولار في قاعدة البيانات
+        $total_usd = $total_ll / 89000;
+
         $pdo->beginTransaction();
 
-        // 1. Insert main order
+        // 1. Insert main order (تخزين الإجمالي بالدولار)
         $stmtOrder = $pdo->prepare('INSERT INTO orders (total) VALUES (:total)');
-        $stmtOrder->execute(['total' => $total]);
+        $stmtOrder->execute(['total' => $total_usd]);
         $order_id = $pdo->lastInsertId();
 
         // 2. Insert cart items into order_items
@@ -50,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($items as $item) {
             $cat_id = intval($item['id'] ?? 0);
             $qty = intval($item['quantity'] ?? 1);
+            // إذا بدك الأسعار الداخلية للـ items تحفظ كمان بالدولار أو تضل مثل ما هي، فيك تخليها، لكن الأهم الـ total صار دولار
             $price = floatval($item['price'] ?? 0);
 
             if ($cat_id > 0 && $qty > 0) {
