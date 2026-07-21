@@ -26,8 +26,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     switch ($method) {
         case 'GET':
-            // Fetching active services
-            $stmt = $pdo->query('SELECT id, name, price, is_active FROM additional_services WHERE is_active = 1 ORDER BY id DESC');
+            // Fetching active services including name_ar
+            $stmt = $pdo->query('SELECT id, name, name_ar, price, is_active FROM additional_services WHERE is_active = 1 ORDER BY id DESC');
             $services = $stmt->fetchAll();
             echo json_encode(['success' => true, 'data' => $services]);
             break;
@@ -35,6 +35,7 @@ try {
         case 'POST':
             $data = json_decode(file_get_contents('php://input'), true);
             $name = trim($data['name'] ?? '');
+            $name_ar = trim($data['name_ar'] ?? '');
             $price = floatval($data['price'] ?? 0);
 
             if (empty($name)) {
@@ -43,9 +44,10 @@ try {
                 exit();
             }
 
-            $stmt = $pdo->prepare('INSERT INTO additional_services (name, price, is_active) VALUES (:name, :price, 1)');
+            $stmt = $pdo->prepare('INSERT INTO additional_services (name, name_ar, price, is_active) VALUES (:name, :name_ar, :price, 1)');
             $stmt->execute([
                 'name' => $name,
+                'name_ar' => $name_ar,
                 'price' => $price
             ]);
 
@@ -56,6 +58,7 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $id = $data['id'] ?? null;
             $name = trim($data['name'] ?? '');
+            $name_ar = trim($data['name_ar'] ?? '');
             $price = floatval($data['price'] ?? 0);
 
             if (!$id || empty($name)) {
@@ -64,9 +67,10 @@ try {
                 exit();
             }
 
-            $stmt = $pdo->prepare('UPDATE additional_services SET name = :name, price = :price, updated_at = CURRENT_TIMESTAMP WHERE id = :id');
+            $stmt = $pdo->prepare('UPDATE additional_services SET name = :name, name_ar = :name_ar, price = :price, updated_at = CURRENT_TIMESTAMP WHERE id = :id');
             $stmt->execute([
                 'name' => $name,
+                'name_ar' => $name_ar,
                 'price' => $price,
                 'id' => $id
             ]);

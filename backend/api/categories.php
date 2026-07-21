@@ -34,6 +34,7 @@ try {
         case 'POST':
             $data = json_decode(file_get_contents('php://input'), true);
             $name = trim($data['name'] ?? '');
+            $name_ar = trim($data['name_ar'] ?? '');
             $price = floatval($data['price'] ?? 0);
             $price_type = (($data['price_type'] ?? '') === 'per_meter') ? 'per_meter' : 'fixed';
 
@@ -43,9 +44,10 @@ try {
                 exit();
             }
 
-            $stmt = $pdo->prepare('INSERT INTO categories (name, price, price_type) VALUES (:name, :price, :price_type)');
+            $stmt = $pdo->prepare('INSERT INTO categories (name, name_ar, price, price_type) VALUES (:name, :name_ar, :price, :price_type)');
             $stmt->execute([
                 'name' => $name,
+                'name_ar' => $name_ar,
                 'price' => $price,
                 'price_type' => $price_type
             ]);
@@ -57,6 +59,7 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             $id = $data['id'] ?? null;
             $name = trim($data['name'] ?? '');
+            $name_ar = trim($data['name_ar'] ?? '');
             $price = floatval($data['price'] ?? 0);
             $price_type = (($data['price_type'] ?? '') === 'per_meter') ? 'per_meter' : 'fixed';
 
@@ -66,9 +69,10 @@ try {
                 exit();
             }
 
-            $stmt = $pdo->prepare('UPDATE categories SET name = :name, price = :price, price_type = :price_type WHERE id = :id');
+            $stmt = $pdo->prepare('UPDATE categories SET name = :name, name_ar = :name_ar, price = :price, price_type = :price_type WHERE id = :id');
             $stmt->execute([
                 'name' => $name,
+                'name_ar' => $name_ar,
                 'price' => $price,
                 'price_type' => $price_type,
                 'id' => $id

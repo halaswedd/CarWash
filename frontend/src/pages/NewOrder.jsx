@@ -182,16 +182,20 @@ export default function NewOrder() {
                   key={cat.id}
                   className="category-card"
                   onClick={() => addToCart(cat)}
+                  style={{ cursor: 'pointer' }}
                 >
-                  <div className="cat-name">{cat.name}</div>
-                  <div className="cat-price">{Number(cat.price).toLocaleString()} L.L</div>
+                  <div className="cat-name" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 'bold' }}>{cat.name}</span>
+                    <span style={{ fontSize: '13px', color: '#666' }}>{cat.name_ar}</span>
+                  </div>
+                  <div className="cat-price" style={{ marginTop: '8px' }}>{Number(cat.price).toLocaleString()} L.L</div>
                   <div className="cat-action-hint">➕ Add</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Additional Services Grid (Directly on page, no popup) */}
+          {/* Additional Services Grid */}
           <div className="pos-card">
             <h3>2. Additional Services</h3>
             <div className="categories-grid">
@@ -200,9 +204,13 @@ export default function NewOrder() {
                   key={serv.id}
                   className="category-card service-grid-card"
                   onClick={() => addServiceToCart(serv)}
+                  style={{ cursor: 'pointer' }}
                 >
-                  <div className="cat-name">{serv.name}</div>
-                  <div className="cat-price">+{Number(serv.price).toLocaleString()} L.L</div>
+                  <div className="cat-name" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 'bold' }}>{serv.name}</span>
+                    <span style={{ fontSize: '13px', color: '#666' }}>{serv.name_ar}</span>
+                  </div>
+                  <div className="cat-price" style={{ marginTop: '8px' }}>+{Number(serv.price).toLocaleString()} L.L</div>
                   <div className="cat-action-hint service-hint">➕ Add</div>
                 </div>
               ))}
@@ -221,14 +229,15 @@ export default function NewOrder() {
               ) : (
                 <>
                   {cart.map((item) => (
-                    <div key={`cat-${item.id}`} className="cart-item-row">
-                      <div className="cart-item-info">
-                        <span className="cart-item-name">{item.name}</span>
-                        <span className="cart-item-price">
+                    <div key={`cat-${item.id}`} className="cart-item-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <div className="cart-item-info" style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className="cart-item-name" style={{ fontWeight: 'bold' }}>{item.name}</span>
+                        <span className="cart-item-name-ar" style={{ fontSize: '12px', color: '#666' }}>{item.name_ar}</span>
+                        <span className="cart-item-price" style={{ color: '#27ae60', marginTop: '2px' }}>
                           {(item.price * item.quantity).toLocaleString()} L.L
                         </span>
                       </div>
-                      <div className="cart-item-controls">
+                      <div className="cart-item-controls" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <button type="button" onClick={() => updateQuantity(item.id, -1)}>-</button>
                         <span>{item.quantity}</span>
                         <button type="button" onClick={() => updateQuantity(item.id, 1)}>+</button>
@@ -238,14 +247,15 @@ export default function NewOrder() {
                   ))}
 
                   {servicesCart.map((item) => (
-                    <div key={`serv-${item.id}`} className="cart-item-row service-cart-row">
-                      <div className="cart-item-info">
-                        <span className="cart-item-name">+ {item.name}</span>
-                        <span className="cart-item-price">
+                    <div key={`serv-${item.id}`} className="cart-item-row service-cart-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <div className="cart-item-info" style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className="cart-item-name" style={{ fontWeight: 'bold' }}>+ {item.name}</span>
+                        <span className="cart-item-name-ar" style={{ fontSize: '12px', color: '#666' }}>{item.name_ar}</span>
+                        <span className="cart-item-price" style={{ color: '#27ae60', marginTop: '2px' }}>
                           {(item.price * item.quantity).toLocaleString()} L.L
                         </span>
                       </div>
-                      <div className="cart-item-controls">
+                      <div className="cart-item-controls" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <button type="button" onClick={() => updateServiceQuantity(item.id, -1)}>-</button>
                         <span>{item.quantity}</span>
                         <button type="button" onClick={() => updateServiceQuantity(item.id, 1)}>+</button>
