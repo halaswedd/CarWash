@@ -111,7 +111,7 @@ export default function DailyReport() {
                     {reportData.categories_breakdown.map((item, index) => (
                       <tr key={index}>
                         <td className="fw-bold">{item.category_name}</td>
-                        <td>{item.car_count} Cars</td>
+                        <td>{item.car_count}</td>
                         <td className="text-primary-color">
                           {`$${((Number(item.category_revenue || 0)) / EXCHANGE_RATE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </td>
