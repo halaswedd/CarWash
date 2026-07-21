@@ -27,7 +27,6 @@ try {
         $month = intval($_GET['month'] ?? date('n'));
         $year = intval($_GET['year'] ?? date('Y'));
 
-        // جلب المصروفات حسب الشهر والسنة باستخدام الأعمدة الحقيقية بالجدول
         $stmt = $pdo->prepare("
             SELECT * FROM expenses 
             WHERE expense_month = :month AND expense_year = :year 
@@ -36,7 +35,6 @@ try {
         $stmt->execute(['month' => $month, 'year' => $year]);
         $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // حساب إجمالي المصروفات للشهر المحدد بالدولار
         $stmtTotal = $pdo->prepare("
             SELECT COALESCE(SUM(COALESCE(amount_usd, amount)), 0) AS total_expenses 
             FROM expenses 
@@ -53,7 +51,9 @@ try {
     } 
     elseif ($method === 'POST') {
         $data = json_decode(file_get_contents('php://input'), true);
-        $name = trim($data['name'] ?? '');
+        
+        // دعم استقبال name أو title لضمان عدم حدوث مشاكل
+        $name = trim($data['name'] ?? $data['title'] ?? '');
         $amount = floatval($data['amount'] ?? 0);
         $currency = $data['currency'] ?? 'USD';
 
@@ -63,7 +63,7 @@ try {
             exit();
         }
 
-        // حساب المبلغ بالدولار والتحويل إذا كان بالليرة
+        // تحويل المبلغ إلى الدولار إذا كان بالليرة
         if ($currency === 'L.L') {
             $amount_usd = $amount / 89000;
         } else {
@@ -73,7 +73,7 @@ try {
         $expense_month = intval(date('n'));
         $expense_year = intval(date('Y'));
 
-        // إدخال البيانات مطابقة تماماً لأعمدة جدولك
+        // الإدخال في عمود name المطابق لقاعدة البيانات
         $stmt = $pdo->prepare("
             INSERT INTO expenses (name, amount, currency, amount_usd, expense_month, expense_year) 
             VALUES (:name, :amount, :currency, :amount_usd, :expense_month, :expense_year)
@@ -103,6 +103,7 @@ try {
             exit();
         }
 
+        // تصحيح علامة = المفقودة في الاستعلام
         $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = :id");
         $stmt->execute(['id' => $id]);
 

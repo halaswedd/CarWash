@@ -6,7 +6,7 @@ require_once __DIR__ . '/config/db.php';
 
 // ✏️ Put the email and password you want here:
 $email    = 'admin@carwash.com';
-$password = 'halamhamad1226'; 
+$password = 'reslen12'; 
 
 // Encrypt the password using PHP password_hash
 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);

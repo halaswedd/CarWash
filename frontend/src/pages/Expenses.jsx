@@ -32,7 +32,7 @@ export default function Expenses() {
   
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('USD'); // اختيار العملة الافتراضية
+  const [currency, setCurrency] = useState('USD');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export default function Expenses() {
       const res = await axios.post(
         EXPENSES_API,
         { 
-          title, 
+          name: title, // المرسل يطابق عمود name في قاعدة البيانات
           amount: parseFloat(amount),
           currency 
         },
@@ -174,8 +174,7 @@ export default function Expenses() {
               <thead>
                 <tr>
                   <th>Title / Reason</th>
-                  <th>Original Amount</th>
-                  <th>Amount (USD)</th>
+                  <th>Amount</th>
                   <th>Date & Time</th>
                   <th>Action</th>
                 </tr>
@@ -183,13 +182,14 @@ export default function Expenses() {
               <tbody>
                 {expenses.map((exp) => (
                   <tr key={exp.id}>
-                    <td className="fw-bold">{exp.title}</td>
-                    <td className="expense-amount-cell">
-                      {Number(exp.original_amount ?? exp.amount).toLocaleString()} {exp.currency || 'USD'}
-                    </td>
+                    {/* تعديل لعرض الـ name بدلاً من title */}
+                    <td className="fw-bold">{exp.name}</td>
+                    
+                    {/* عرض المبلغ بالدولار USD */}
                     <td className="expense-amount-cell" style={{ fontWeight: 'bold', color: '#002b4d' }}>
                       ${Number(exp.amount_usd ?? exp.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
+
                     <td className="date-cell">
                       {new Date(exp.created_at).toLocaleString('en-GB', {
                         dateStyle: 'medium',
