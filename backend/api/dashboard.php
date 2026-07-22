@@ -16,7 +16,10 @@ session_start();
 
 if (!isset($_SESSION['admin_id'])) {
     http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Unauthorized access.'
+    ]);
     exit();
 }
 
@@ -25,49 +28,115 @@ $currentMonth = date('m');
 $currentYear = date('Y');
 
 try {
-    // إحصائيات اليوم (عدد السيارات والإيرادات)
-    $stmtToday = $pdo->prepare("
-        SELECT 
-            COALESCE(SUM(o.total), 0) AS revenue_today,
-            COALESCE(SUM(oi.quantity), 0) AS cars_today
-        FROM orders o
-        LEFT JOIN order_items oi ON oi.order_id = o.id
-        WHERE DATE(o.created_at) = :today
-    ");
-    $stmtToday->execute(['today' => $today]);
-    $todayData = $stmtToday->fetch(PDO::FETCH_ASSOC);
 
-    // إحصائيات الشهر الحالي (عدد السيارات والإيرادات)
-    $stmtMonth = $pdo->prepare("
-        SELECT 
-            COALESCE(SUM(o.total), 0) AS revenue_month,
-            COALESCE(SUM(oi.quantity), 0) AS cars_month
-        FROM orders o
-        LEFT JOIN order_items oi ON oi.order_id = o.id
-        WHERE MONTH(o.created_at) = :month AND YEAR(o.created_at) = :year
+    // ==========================
+    // TODAY REVENUE
+    // ==========================
+    $stmtTodayRevenue = $pdo->prepare("
+        SELECT COALESCE(SUM(total),0) AS revenue_today
+        FROM orders
+        WHERE DATE(created_at)=:today
     ");
-    $stmtMonth->execute(['month' => $currentMonth, 'year' => $currentYear]);
-    $monthData = $stmtMonth->fetch(PDO::FETCH_ASSOC);
 
-    // مصروفات الشهر الحالي
+    $stmtTodayRevenue->execute([
+        'today' => $today
+    ]);
+
+    $todayRevenue = $stmtTodayRevenue->fetch(PDO::FETCH_ASSOC);
+
+
+    // ==========================
+    // TODAY CARS
+    // ==========================
+    $stmtTodayCars = $pdo->prepare("
+        SELECT COALESCE(SUM(oi.quantity),0) AS cars_today
+        FROM orders o
+        INNER JOIN order_items oi
+            ON oi.order_id=o.id
+        WHERE DATE(o.created_at)=:today
+    ");
+
+    $stmtTodayCars->execute([
+        'today' => $today
+    ]);
+
+    $todayCars = $stmtTodayCars->fetch(PDO::FETCH_ASSOC);
+
+
+    // ==========================
+    // MONTH REVENUE
+    // ==========================
+    $stmtMonthRevenue = $pdo->prepare("
+        SELECT COALESCE(SUM(total),0) AS revenue_month
+        FROM orders
+        WHERE MONTH(created_at)=:month
+          AND YEAR(created_at)=:year
+    ");
+
+    $stmtMonthRevenue->execute([
+        'month' => $currentMonth,
+        'year' => $currentYear
+    ]);
+
+    $monthRevenue = $stmtMonthRevenue->fetch(PDO::FETCH_ASSOC);
+
+
+    // ==========================
+    // MONTH CARS
+    // ==========================
+    $stmtMonthCars = $pdo->prepare("
+        SELECT COALESCE(SUM(oi.quantity),0) AS cars_month
+        FROM orders o
+        INNER JOIN order_items oi
+            ON oi.order_id=o.id
+        WHERE MONTH(o.created_at)=:month
+          AND YEAR(o.created_at)=:year
+    ");
+
+    $stmtMonthCars->execute([
+        'month' => $currentMonth,
+        'year' => $currentYear
+    ]);
+
+    $monthCars = $stmtMonthCars->fetch(PDO::FETCH_ASSOC);
+
+
+    // ==========================
+    // MONTH EXPENSES
+    // ==========================
     $stmtExpenses = $pdo->prepare("
-        SELECT COALESCE(SUM(amount), 0) AS monthly_expenses
+        SELECT COALESCE(SUM(amount),0) AS monthly_expenses
         FROM expenses
-        WHERE MONTH(created_at) = :month AND YEAR(created_at) = :year
+        WHERE MONTH(created_at)=:month
+          AND YEAR(created_at)=:year
     ");
-    $stmtExpenses->execute(['month' => $currentMonth, 'year' => $currentYear]);
+
+    $stmtExpenses->execute([
+        'month' => $currentMonth,
+        'year' => $currentYear
+    ]);
+
     $expenseData = $stmtExpenses->fetch(PDO::FETCH_ASSOC);
+
 
     echo json_encode([
         'success' => true,
-        'cars_today' => intval($todayData['cars_today']),
-        'revenue_today' => floatval($todayData['revenue_today']),
-        'cars_month' => intval($monthData['cars_month']),
-        'revenue_month' => floatval($monthData['revenue_month']),
-        'monthly_expenses' => floatval($expenseData['monthly_expenses'])
+
+        'cars_today' => (int)$todayCars['cars_today'],
+        'revenue_today' => (float)$todayRevenue['revenue_today'],
+
+        'cars_month' => (int)$monthCars['cars_month'],
+        'revenue_month' => (float)$monthRevenue['revenue_month'],
+
+        'monthly_expenses' => (float)$expenseData['monthly_expenses']
     ]);
 
 } catch (PDOException $e) {
+
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+
+    echo json_encode([
+        'success' => false,
+        'message' => 'Database error: ' . $e->getMessage()
+    ]);
 }

@@ -30,25 +30,43 @@ $date = $_GET['date'] ?? date('Y-m-d');
 
 try {
 
-    // ===== Summary =====
-    $stmtSummary = $pdo->prepare("
+    // =========================
+    // Total Revenue
+    // =========================
+    $stmtRevenue = $pdo->prepare("
         SELECT
-            COALESCE(SUM(oi.quantity * oi.price), 0) AS total_revenue,
-            COALESCE(SUM(oi.quantity), 0) AS total_cars
-        FROM orders o
-        LEFT JOIN order_items oi
-            ON oi.order_id = o.id
-        WHERE DATE(o.created_at) = :selected_date
+            COALESCE(SUM(total),0) AS total_revenue
+        FROM orders
+        WHERE DATE(created_at)=:selected_date
     ");
 
-    $stmtSummary->execute([
+    $stmtRevenue->execute([
         'selected_date' => $date
     ]);
 
-    $summary = $stmtSummary->fetch(PDO::FETCH_ASSOC);
+    $revenueData = $stmtRevenue->fetch(PDO::FETCH_ASSOC);
 
+    // =========================
+    // Total Cars
+    // =========================
+    $stmtCars = $pdo->prepare("
+        SELECT
+            COALESCE(SUM(oi.quantity),0) AS total_cars
+        FROM orders o
+        INNER JOIN order_items oi
+            ON oi.order_id=o.id
+        WHERE DATE(o.created_at)=:selected_date
+    ");
 
-    // ===== Categories Breakdown =====
+    $stmtCars->execute([
+        'selected_date' => $date
+    ]);
+
+    $carData = $stmtCars->fetch(PDO::FETCH_ASSOC);
+
+    // =========================
+    // Categories Breakdown
+    // =========================
     $stmtCategories = $pdo->prepare("
         SELECT
             c.name AS category_name,
@@ -59,8 +77,8 @@ try {
             ON o.id = oi.order_id
         INNER JOIN categories c
             ON c.id = oi.category_id
-        WHERE DATE(o.created_at) = :selected_date
-        GROUP BY c.id, c.name
+        WHERE DATE(o.created_at)=:selected_date
+        GROUP BY c.id,c.name
         ORDER BY c.name
     ");
 
@@ -70,12 +88,11 @@ try {
 
     $categoriesBreakdown = $stmtCategories->fetchAll(PDO::FETCH_ASSOC);
 
-
     echo json_encode([
         'success' => true,
         'date' => $date,
-        'total_revenue' => (float)$summary['total_revenue'],
-        'total_cars' => (int)$summary['total_cars'],
+        'total_revenue' => (float)$revenueData['total_revenue'],
+        'total_cars' => (int)$carData['total_cars'],
         'categories_breakdown' => $categoriesBreakdown
     ]);
 
@@ -85,6 +102,6 @@ try {
 
     echo json_encode([
         'success' => false,
-        'message' => $e->getMessage()
+        'message' => 'Database error: ' . $e->getMessage()
     ]);
 }

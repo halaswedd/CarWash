@@ -4,11 +4,13 @@ import './DailyReport.css';
 
 const REPORT_API = 'http://localhost/carwash/backend/api/daily_report.php';
 
-// سعر الصرف المعتمد لتحويل الليرة إلى دولار (يمكنك تعديل القيمة متى شئت)
-const EXCHANGE_RATE = 89000; 
+// سعر الصرف لتحويل أسعار الـ Categories من الليرة إلى الدولار
+const EXCHANGE_RATE = 89000;
 
 export default function DailyReport() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -21,6 +23,7 @@ export default function DailyReport() {
     try {
       setLoading(true);
       setErrorMsg('');
+
       const res = await axios.get(`${REPORT_API}?date=${date}`, {
         withCredentials: true,
       });
@@ -31,7 +34,7 @@ export default function DailyReport() {
         setErrorMsg('Failed to load report data.');
       }
     } catch (err) {
-      console.error('Error fetching daily report:', err);
+      console.error(err);
       setErrorMsg('Failed to connect to server.');
     } finally {
       setLoading(false);
@@ -84,21 +87,30 @@ export default function DailyReport() {
 
               <div className="stat-box">
                 <span className="stat-label">TOTAL CARS</span>
-                <span className="stat-value">{reportData.total_cars}</span>
+                <span className="stat-value">
+                  {reportData.total_cars}
+                </span>
               </div>
 
               <div className="stat-box">
                 <span className="stat-label">REVENUE</span>
                 <span className="stat-value revenue-text">
-                  {`$${((Number(reportData.total_revenue || 0)) / EXCHANGE_RATE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  {`$${Number(reportData.total_revenue || 0).toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  )}`}
                 </span>
               </div>
             </div>
 
-            {/* تفاصيل أنواع السيارات الكميات والمدخول */}
             <div className="breakdown-section">
               <h4>Cars Breakdown by Category</h4>
-              {reportData.categories_breakdown && reportData.categories_breakdown.length > 0 ? (
+
+              {reportData.categories_breakdown &&
+              reportData.categories_breakdown.length > 0 ? (
                 <table className="breakdown-table">
                   <thead>
                     <tr>
@@ -107,26 +119,43 @@ export default function DailyReport() {
                       <th>Subtotal Revenue</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {reportData.categories_breakdown.map((item, index) => (
                       <tr key={index}>
-                        <td className="fw-bold">{item.category_name}</td>
+                        <td className="fw-bold">
+                          {item.category_name}
+                        </td>
+
                         <td>{item.car_count}</td>
+
                         <td className="text-primary-color">
-                          {`$${((Number(item.category_revenue || 0)) / EXCHANGE_RATE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                          {`$${(
+                            Number(item.category_revenue || 0) /
+                            EXCHANGE_RATE
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               ) : (
-                <p className="no-data-text">No cars washed on this date.</p>
+                <p className="no-data-text">
+                  No cars washed on this date.
+                </p>
               )}
             </div>
           </>
         ) : null}
 
-        <button type="button" className="btn-download-pdf" onClick={handlePrintPDF}>
+        <button
+          type="button"
+          className="btn-download-pdf"
+          onClick={handlePrintPDF}
+        >
           📥 Download / Print PDF
         </button>
       </div>
